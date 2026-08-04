@@ -252,9 +252,39 @@ export function tmdbMovieUrl(id: number, title: string): string {
 }
 
 /**
- * TMDB's review box supports Markdown, so the blockquote syntax renders
- * as an actual quote there, same convention as the Ghost body.
+ * TMDB's review box supports Markdown, but Ian's actual usage matches the
+ * same haiku-then-hashtag format as Metacritic and Plex, not a blockquote.
  */
 export function tmdbReviewBody(input: ReviewInput): string {
-  return `> ${haikuBlock(input.haikuLines)}`;
+  return `${haikuBlock(input.haikuLines)}\n\n#filmreviewhaiku`;
+}
+
+/**
+ * Best-effort guess at Plex Watch's slug convention
+ * (/en-GB/movie/title-year/review). No public lookup API, no cross-reference
+ * on TMDB, same caveat as RT/Metacritic, pair with a search fallback.
+ * Locale prefix (en-GB) matches Ian's account, may differ for others.
+ */
+export function plexGuessedUrl(title: string, year: string): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+  return year
+    ? `https://watch.plex.tv/en-GB/movie/${slug}-${year}/review`
+    : `https://watch.plex.tv/en-GB/movie/${slug}/review`;
+}
+
+export function plexSearchUrl(title: string): string {
+  return `https://watch.plex.tv/en-GB/search?query=${encodeURIComponent(title)}`;
+}
+
+/**
+ * Plex's review box: haiku (single slash-separated line), blank line,
+ * hashtag, same as Metacritic and TMDB. Rating is its own 5-star scale,
+ * same as the house rating, no conversion needed.
+ */
+export function plexReviewText(input: ReviewInput): string {
+  return `${haikuBlock(input.haikuLines)}\n\n#filmreviewhaiku`;
 }

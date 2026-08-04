@@ -34,6 +34,9 @@ import {
   metacriticReviewText,
   tmdbMovieUrl,
   tmdbReviewBody,
+  plexGuessedUrl,
+  plexSearchUrl,
+  plexReviewText,
 } from "./lib/format";
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => 0.5 * (i + 1));
@@ -49,6 +52,7 @@ const NOTION_PLATFORM_LABEL: Record<string, string> = {
   "Rotten Tomatoes": "Rotten Tomatoes",
   Metacritic: "Metacritic",
   TMDB: "TMDB",
+  Plex: "Plex",
 };
 
 export default function App() {
@@ -80,6 +84,7 @@ export default function App() {
   const [postedRT, setPostedRT] = useState(false);
   const [postedMetacritic, setPostedMetacritic] = useState(false);
   const [postedTmdbReview, setPostedTmdbReview] = useState(false);
+  const [postedPlex, setPostedPlex] = useState(false);
 
   const [tmdbAuthStatus, setTmdbAuthStatus] = useState<
     { state: "idle" } | { state: "connecting" } | { state: "error"; message: string }
@@ -319,8 +324,19 @@ export default function App() {
     if (postedRT) labels.push(NOTION_PLATFORM_LABEL["Rotten Tomatoes"]);
     if (postedMetacritic) labels.push(NOTION_PLATFORM_LABEL["Metacritic"]);
     if (postedTmdbReview || tmdbRatingStatus.state === "submitted") labels.push(NOTION_PLATFORM_LABEL["TMDB"]);
+    if (postedPlex) labels.push(NOTION_PLATFORM_LABEL["Plex"]);
     return labels;
-  }, [postedGhost, postedLetterboxd, blueskyStatus, postedImdb, postedRT, postedMetacritic, postedTmdbReview, tmdbRatingStatus]);
+  }, [
+    postedGhost,
+    postedLetterboxd,
+    blueskyStatus,
+    postedImdb,
+    postedRT,
+    postedMetacritic,
+    postedTmdbReview,
+    tmdbRatingStatus,
+    postedPlex,
+  ]);
 
   const notionPlatformsPaste = postedPlatformLabels.join(", ");
   const notionStatusPaste = postedPlatformLabels.length > 0 ? "🚀 Published" : "✏️ Drafting";
@@ -441,7 +457,7 @@ export default function App() {
 
       {readyForPlatforms && (
         <>
-          <p className="reel-heading">Publish &middot; frame 1 of 8</p>
+          <p className="reel-heading">Publish &middot; frame 1 of 9</p>
 
           <PlatformRow frame="01" name="Notion" status="manual">
             <p className="frame__preview">{notionSummary(input)}</p>
@@ -612,7 +628,7 @@ export default function App() {
             status={tmdbRatingStatus.state === "submitted" ? "posted" : "manual"}
           >
             <p className="frame__preview">{tmdbReviewBody(input)}</p>
-            <p className="frame__helper">Review text is Markdown, TMDB has no API for posting it, this stays copy-paste.</p>
+            <p className="frame__helper">TMDB has no API for posting reviews, this stays copy-paste.</p>
             <div className="frame__actions">
               <CopyButton text={tmdbReviewBody(input)} label="Copy review text" />
               {tmdbMeta ? (
@@ -653,6 +669,27 @@ export default function App() {
             </div>
             {tmdbAuthStatus.state === "error" && <div className="error">{tmdbAuthStatus.message}</div>}
             {tmdbRatingStatus.state === "error" && <div className="error">{tmdbRatingStatus.message}</div>}
+          </PlatformRow>
+
+          <PlatformRow frame="09" name="Plex" status="manual">
+            <p className="frame__preview">{plexReviewText(input)}</p>
+            <p className="frame__helper">
+              Rating to select: {rating.toFixed(1)} ({ratingStars(rating)}) &middot; Plex has no API for this
+              (rating catalog titles is a known broken endpoint), stays copy-paste.
+            </p>
+            <div className="frame__actions">
+              <CopyButton text={plexReviewText(input)} label="Copy review text" />
+              <a className="link-out" href={plexGuessedUrl(title, year)} target="_blank" rel="noreferrer">
+                Try direct page (guess) &rarr;
+              </a>
+              <a className="link-out" href={plexSearchUrl(title)} target="_blank" rel="noreferrer">
+                Open Plex search (if guess is wrong) &rarr;
+              </a>
+              <label className="toggle">
+                <input type="checkbox" checked={postedPlex} onChange={(e) => setPostedPlex(e.target.checked)} />
+                posted
+              </label>
+            </div>
           </PlatformRow>
 
           <section className="notion-update">
