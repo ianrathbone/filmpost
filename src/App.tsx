@@ -4,7 +4,7 @@ import { CopyButton } from "./components/CopyButton";
 import { PlatformRow } from "./components/PlatformRow";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { loadSettings, saveSettings, Settings } from "./lib/storage";
-import { tmdbSearch, tmdbExternalIds, TmdbResult } from "./lib/tmdb";
+import { tmdbSearch, tmdbExternalIds, tmdbCreateRequestToken, tmdbApproveUrl, tmdbCreateSession, tmdbSubmitRating, TmdbResult } from "./lib/tmdb";
 import { postToBluesky } from "./lib/bluesky";
 import {
   ReviewInput,
@@ -32,6 +32,8 @@ import {
   metacriticGuessedUrl,
   metacriticSearchUrl,
   metacriticReviewText,
+  tmdbMovieUrl,
+  tmdbReviewBody,
 } from "./lib/format";
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => 0.5 * (i + 1));
@@ -46,6 +48,7 @@ const NOTION_PLATFORM_LABEL: Record<string, string> = {
   IMDb: "IMDb",
   "Rotten Tomatoes": "Rotten Tomatoes",
   Metacritic: "Metacritic",
+  TMDB: "TMDB",
 };
 
 export default function App() {
@@ -76,6 +79,14 @@ export default function App() {
   const [postedImdb, setPostedImdb] = useState(false);
   const [postedRT, setPostedRT] = useState(false);
   const [postedMetacritic, setPostedMetacritic] = useState(false);
+  const [postedTmdbReview, setPostedTmdbReview] = useState(false);
+
+  const [tmdbAuthStatus, setTmdbAuthStatus] = useState<
+    { state: "idle" } | { state: "connecting" } | { state: "error"; message: string }
+  >({ state: "idle" });
+  const [tmdbRatingStatus, setTmdbRatingStatus] = useState<
+    { state: "idle" } | { state: "submitting" } | { state: "submitted" } | { state: "error"; message: string }
+  >({ state: "idle" });
 
   const [blueskyStatus, setBlueskyStatus] = useState<
     | { state: "idle" }
@@ -89,6 +100,81 @@ export default function App() {
   function updateSettings(next: Settings) {
     setSettings(next);
     saveSettings(next);
+  }
+
+  // TMDB redirects back here with ?approved=true&request_token=... after
+  // the user approves the login on themoviedb.org. Exchange that token for
+  // a permanent session_id and clean the URL up.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const approved = params.get("approved");
+    const requestToken = params.get("request_token");
+    if (approved === "true" && requestToken) {
+      const currentSettings = loadSettings();
+      if (!currentSettings.tmdbKey) {
+        setTmdbAuthStatus({ state: "error", message: "TMDB key wasn't available after the redirect, try connecting again." });
+      } else {
+        setTmdbAuthStatus({ state: "connecting" });
+        tmdbCreateSession(currentSettings.tmdbKey, requestToken).then((result) => {
+          if (typeof result === "string") {
+            const next = { ...currentSettings, tmdbSessionId: result };
+            setSettings(next);
+            saveSettings(next);
+            setTmdbAuthStatus({ state: "idle" });
+          } else {
+            setTmdbAuthStatus({ state: "error", message: result.error });
+          }
+        });
+      }
+      const url = new URL(window.location.href);
+      url.search = "";
+      window.history.replaceState({}, "", url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function connectTmdbAccount() {
+    if (!settings.tmdbKey) {
+      setTmdbAuthStatus({ state: "error", message: "Add a TMDB API key in settings first." });
+      return;
+    }
+    if (!settings.saveCredentials) {
+      setTmdbAuthStatus({
+        state: "error",
+        message: "Turn on \"Remember these\" in settings first, the redirect needs the key to survive the round trip.",
+      });
+      return;
+    }
+    setTmdbAuthStatus({ state: "connecting" });
+    const token = await tmdbCreateRequestToken(settings.tmdbKey);
+    if (typeof token !== "string") {
+      setTmdbAuthStatus({ state: "error", message: token.error });
+      return;
+    }
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    window.location.href = tmdbApproveUrl(token, redirectTo);
+  }
+
+  async function handleTmdbRate() {
+    if (!tmdbMeta) {
+      setTmdbRatingStatus({ state: "error", message: "Run the poster lookup first, the rating needs the TMDB movie id." });
+      return;
+    }
+    if (!settings.tmdbSessionId) {
+      setTmdbRatingStatus({ state: "error", message: "Connect your TMDB account first." });
+      return;
+    }
+    const value = imdbRatingOutOf10(rating);
+    const confirmed = window.confirm(`Rate "${tmdbMeta.title}" ${value}/10 on TMDB?`);
+    if (!confirmed) return;
+
+    setTmdbRatingStatus({ state: "submitting" });
+    const result = await tmdbSubmitRating(settings.tmdbKey, settings.tmdbSessionId, tmdbMeta.id, value);
+    if ("ok" in result) {
+      setTmdbRatingStatus({ state: "submitted" });
+    } else {
+      setTmdbRatingStatus({ state: "error", message: result.error });
+    }
   }
 
   function setLine(i: number, value: string) {
@@ -232,8 +318,9 @@ export default function App() {
     if (postedImdb) labels.push(NOTION_PLATFORM_LABEL["IMDb"]);
     if (postedRT) labels.push(NOTION_PLATFORM_LABEL["Rotten Tomatoes"]);
     if (postedMetacritic) labels.push(NOTION_PLATFORM_LABEL["Metacritic"]);
+    if (postedTmdbReview || tmdbRatingStatus.state === "submitted") labels.push(NOTION_PLATFORM_LABEL["TMDB"]);
     return labels;
-  }, [postedGhost, postedLetterboxd, blueskyStatus, postedImdb, postedRT, postedMetacritic]);
+  }, [postedGhost, postedLetterboxd, blueskyStatus, postedImdb, postedRT, postedMetacritic, postedTmdbReview, tmdbRatingStatus]);
 
   const notionPlatformsPaste = postedPlatformLabels.join(", ");
   const notionStatusPaste = postedPlatformLabels.length > 0 ? "🚀 Published" : "✏️ Drafting";
@@ -354,7 +441,7 @@ export default function App() {
 
       {readyForPlatforms && (
         <>
-          <p className="reel-heading">Publish &middot; frame 1 of 7</p>
+          <p className="reel-heading">Publish &middot; frame 1 of 8</p>
 
           <PlatformRow frame="01" name="Notion" status="manual">
             <p className="frame__preview">{notionSummary(input)}</p>
@@ -517,6 +604,55 @@ export default function App() {
                 posted
               </label>
             </div>
+          </PlatformRow>
+
+          <PlatformRow
+            frame="08"
+            name="TMDB"
+            status={tmdbRatingStatus.state === "submitted" ? "posted" : "manual"}
+          >
+            <p className="frame__preview">{tmdbReviewBody(input)}</p>
+            <p className="frame__helper">Review text is Markdown, TMDB has no API for posting it, this stays copy-paste.</p>
+            <div className="frame__actions">
+              <CopyButton text={tmdbReviewBody(input)} label="Copy review text" />
+              {tmdbMeta ? (
+                <a className="link-out" href={tmdbMovieUrl(tmdbMeta.id, title)} target="_blank" rel="noreferrer">
+                  Open TMDB movie page &rarr;
+                </a>
+              ) : (
+                <span className="char-count">Run "Look up poster" above first</span>
+              )}
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={postedTmdbReview}
+                  onChange={(e) => setPostedTmdbReview(e.target.checked)}
+                />
+                review posted
+              </label>
+            </div>
+
+            <p className="frame__helper" style={{ marginTop: 8 }}>
+              Rating to submit: {imdbRatingOutOf10(rating)}/10 &middot; this one does post through the API
+            </p>
+            <div className="frame__actions">
+              {settings.tmdbSessionId ? (
+                <button
+                  className="btn"
+                  onClick={handleTmdbRate}
+                  disabled={tmdbRatingStatus.state === "submitting" || !tmdbMeta}
+                >
+                  {tmdbRatingStatus.state === "submitting" ? "Rating..." : "Rate on TMDB"}
+                </button>
+              ) : (
+                <button className="btn btn--ghost" onClick={connectTmdbAccount} disabled={tmdbAuthStatus.state === "connecting"}>
+                  {tmdbAuthStatus.state === "connecting" ? "Connecting..." : "Connect TMDB account"}
+                </button>
+              )}
+              {tmdbRatingStatus.state === "submitted" && <span className="posted-note">Rated on TMDB</span>}
+            </div>
+            {tmdbAuthStatus.state === "error" && <div className="error">{tmdbAuthStatus.message}</div>}
+            {tmdbRatingStatus.state === "error" && <div className="error">{tmdbRatingStatus.message}</div>}
           </PlatformRow>
 
           <section className="notion-update">
