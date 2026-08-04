@@ -489,6 +489,53 @@
   color: var(--develop);
 }
 
+/* ---------- Notion update panel ---------- */
+
+.notion-update {
+  border: 1px dashed var(--rule);
+  border-radius: 4px;
+  padding: 18px 20px;
+  margin-top: 8px;
+  margin-bottom: 20px;
+}
+
+.notion-update h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.1rem;
+  margin: 0 0 6px;
+}
+
+.notion-update__hint {
+  font-size: 0.8rem;
+  color: var(--paper-dim);
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+
+.notion-update__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.notion-update__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--paper-faint);
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.notion-update__value {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--paper);
+}
+
 /* ---------- Settings overlay ---------- */
 
 .settings-overlay {

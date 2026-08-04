@@ -23,6 +23,17 @@ import {
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => 0.5 * (i + 1));
 
+// Maps Filmpost's platform names to the exact option labels used in the
+// Notion "Platforms" multi-select property, so the paste works without
+// creating duplicate/mismatched tags.
+const NOTION_PLATFORM_LABEL: Record<string, string> = {
+  Ghost: "Blog",
+  Letterboxd: "Letterboxd",
+  Bluesky: "Bluesky",
+  IMDb: "IMDb",
+  "Rotten Tomatoes": "Rotten Tomatoes",
+};
+
 export default function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings());
   const [showSettings, setShowSettings] = useState(false);
@@ -44,6 +55,11 @@ export default function App() {
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
+
+  const [postedGhost, setPostedGhost] = useState(false);
+  const [postedLetterboxd, setPostedLetterboxd] = useState(false);
+  const [postedImdb, setPostedImdb] = useState(false);
+  const [postedRT, setPostedRT] = useState(false);
 
   const [blueskyStatus, setBlueskyStatus] = useState<
     { state: "idle" } | { state: "posting" } | { state: "posted"; url: string } | { state: "error"; message: string }
@@ -141,6 +157,19 @@ export default function App() {
     setImportText("");
     setShowImport(false);
   }
+
+  const postedPlatformLabels: string[] = useMemo(() => {
+    const labels: string[] = [];
+    if (postedGhost) labels.push(NOTION_PLATFORM_LABEL["Ghost"]);
+    if (postedLetterboxd) labels.push(NOTION_PLATFORM_LABEL["Letterboxd"]);
+    if (blueskyStatus.state === "posted") labels.push(NOTION_PLATFORM_LABEL["Bluesky"]);
+    if (postedImdb) labels.push(NOTION_PLATFORM_LABEL["IMDb"]);
+    if (postedRT) labels.push(NOTION_PLATFORM_LABEL["Rotten Tomatoes"]);
+    return labels;
+  }, [postedGhost, postedLetterboxd, blueskyStatus, postedImdb, postedRT]);
+
+  const notionPlatformsPaste = postedPlatformLabels.join(", ");
+  const notionStatusPaste = postedPlatformLabels.length > 0 ? "🚀 Published" : "✏️ Drafting";
 
   return (
     <div className="app">
@@ -268,6 +297,10 @@ export default function App() {
               <CopyButton text={ghostBody(input)} label="Copy body" />
               <CopyButton text={ratingTag(rating)} label={`Copy tag ${ratingTag(rating)}`} />
               <span className="char-count">template: custom-film-review.hbs</span>
+              <label className="toggle">
+                <input type="checkbox" checked={postedGhost} onChange={(e) => setPostedGhost(e.target.checked)} />
+                posted
+              </label>
             </div>
           </PlatformRow>
 
@@ -278,6 +311,14 @@ export default function App() {
               <a className="link-out" href={letterboxdSearchUrl(title)} target="_blank" rel="noreferrer">
                 Open Letterboxd search &rarr;
               </a>
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={postedLetterboxd}
+                  onChange={(e) => setPostedLetterboxd(e.target.checked)}
+                />
+                posted
+              </label>
             </div>
           </PlatformRow>
 
@@ -327,6 +368,10 @@ export default function App() {
                   <a className="link-out" href={imdbSearchUrl(title)} target="_blank" rel="noreferrer">
                     Open IMDb search &rarr;
                   </a>
+                  <label className="toggle">
+                    <input type="checkbox" checked={postedImdb} onChange={(e) => setPostedImdb(e.target.checked)} />
+                    posted
+                  </label>
                 </div>
               </>
             ) : (
@@ -353,12 +398,34 @@ export default function App() {
                   <a className="link-out" href={rottenTomatoesSearchUrl(title)} target="_blank" rel="noreferrer">
                     Open Rotten Tomatoes search &rarr;
                   </a>
+                  <label className="toggle">
+                    <input type="checkbox" checked={postedRT} onChange={(e) => setPostedRT(e.target.checked)} />
+                    posted
+                  </label>
                 </div>
               </>
             ) : (
               <p className="frame__preview">Off by default. Turn on only for this specific review.</p>
             )}
           </PlatformRow>
+
+          <section className="notion-update">
+            <h3>Update the Notion record</h3>
+            <p className="notion-update__hint">
+              In Notion's table view, click into the Status cell and paste the first value, then the
+              Platforms cell and paste the second, comma-separated values create/select tags automatically.
+            </p>
+            <div className="notion-update__row">
+              <span className="notion-update__label mono">Status</span>
+              <span className="notion-update__value mono">{notionStatusPaste}</span>
+              <CopyButton text={notionStatusPaste} label="Copy" />
+            </div>
+            <div className="notion-update__row">
+              <span className="notion-update__label mono">Platforms</span>
+              <span className="notion-update__value mono">{notionPlatformsPaste || "(none marked posted yet)"}</span>
+              <CopyButton text={notionPlatformsPaste} label="Copy" />
+            </div>
+          </section>
         </>
       )}
 

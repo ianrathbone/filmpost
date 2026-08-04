@@ -11,6 +11,13 @@ publication. Built for the `rathbone.dev` film review pipeline.
 - Gives copy-ready, correctly formatted blocks for Notion, Ghost, Letterboxd,
   IMDb, and Rotten Tomatoes, plus a one-click search link for each so you can
   paste straight into the right page
+- Import: paste the block the `film-haiku-publish` skill outputs after it
+  writes the Notion record, and Filmpost fills in title, year, rating,
+  haiku, notes, and poster in one go
+- Tracks which platforms you've marked "posted" and gives you a ready-to-paste
+  Status and Platforms value for the Notion record, paste straight into the
+  table view cells, comma-separated values create/select multi-select tags
+  automatically, no need to touch Notion's schema
 - Enforces house style: no em dashes (flags them if found), rating tags in
   the `#rating-X-X` format, `#filmreviewhaiku` hashtag on Bluesky
 
