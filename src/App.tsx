@@ -18,6 +18,7 @@ import {
   letterboxdSearchUrl,
   imdbSearchUrl,
   rottenTomatoesSearchUrl,
+  parseImportBlock,
 } from "./lib/format";
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => 0.5 * (i + 1));
@@ -39,6 +40,10 @@ export default function App() {
 
   const [showImdb, setShowImdb] = useState(false);
   const [showRT, setShowRT] = useState(false);
+
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
 
   const [blueskyStatus, setBlueskyStatus] = useState<
     { state: "idle" } | { state: "posting" } | { state: "posted"; url: string } | { state: "error"; message: string }
@@ -118,6 +123,25 @@ export default function App() {
     }
   }
 
+  function handleImport() {
+    const result = parseImportBlock(importText);
+    if ("error" in result) {
+      setImportError(result.error);
+      return;
+    }
+    setImportError(null);
+    setTitle(result.title);
+    setYear(result.year);
+    setRating(result.rating);
+    setHaikuLines(result.haikuLines);
+    setNotes(result.notes);
+    setPosterUrl(result.posterUrl);
+    setTmdbMeta(null);
+    setTmdbError(null);
+    setImportText("");
+    setShowImport(false);
+  }
+
   return (
     <div className="app">
       <header className="app__header">
@@ -131,6 +155,29 @@ export default function App() {
           &#9881;
         </button>
       </header>
+
+      <section className="slate slate--import">
+        <div className="import-toggle">
+          <button className="btn btn--ghost" onClick={() => setShowImport((v) => !v)} type="button">
+            {showImport ? "Hide import" : "Paste from Notion / Claude"}
+          </button>
+          {!showImport && <span className="import-toggle__hint">Or fill in the fields below by hand.</span>}
+        </div>
+        {showImport && (
+          <div className="import-block">
+            <textarea
+              rows={6}
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder={"Film Title: The Odyssey\nYear: 2026\nRating: 5.0\nHaiku: line one / line two / line three\nExtended Notes: (none)\nPoster URL: https://..."}
+            />
+            {importError && <div className="error">{importError}</div>}
+            <button className="btn" onClick={handleImport} type="button" disabled={!importText.trim()}>
+              Fill in fields
+            </button>
+          </div>
+        )}
+      </section>
 
       <section className="slate">
         <div className="lookup-row">
