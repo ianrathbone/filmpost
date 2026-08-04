@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { CopyButton } from "./components/CopyButton";
 import { PlatformRow } from "./components/PlatformRow";
@@ -27,6 +27,8 @@ import {
   imdbRatingOutOf10,
   imdbDefaultReviewText,
   IMDB_REVIEW_TITLE,
+  rottenTomatoesGuessedUrl,
+  rottenTomatoesReviewText,
 } from "./lib/format";
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => 0.5 * (i + 1));
@@ -59,7 +61,6 @@ export default function App() {
   const [lookingUp, setLookingUp] = useState(false);
   const [imdbId, setImdbId] = useState<string | null>(null);
 
-  const [showImdb, setShowImdb] = useState(false);
   const [showRT, setShowRT] = useState(false);
   const [imdbReviewText, setImdbReviewText] = useState("");
 
@@ -129,6 +130,16 @@ export default function App() {
   }, [haikuLines, notes]);
 
   const readyForPlatforms = title.trim() && haikuLines.every((l) => l.trim());
+
+  // IMDb's review text is editable (needs to clear a 300-char minimum the
+  // haiku alone can't reach), so it's only pre-filled once, the first time
+  // there's a haiku to build from, never overwritten after that.
+  useEffect(() => {
+    if (readyForPlatforms && !imdbReviewText) {
+      setImdbReviewText(imdbDefaultReviewText(input));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyForPlatforms]);
 
   const blueskyText = blueskyCaption(input);
   const blueskyOverLimit = blueskyText.length > 300;
@@ -423,66 +434,39 @@ export default function App() {
             {blueskyStatus.state === "error" && <div className="error">{blueskyStatus.message}</div>}
           </PlatformRow>
 
-          <PlatformRow
-            frame="05"
-            name="IMDb"
-            status={showImdb ? "manual" : "off"}
-            toggle={
+          <PlatformRow frame="05" name="IMDb" status="manual">
+            <p className="frame__helper">
+              Rating to select: {imdbRatingOutOf10(rating)}/10 &middot; Review title: {IMDB_REVIEW_TITLE}
+            </p>
+            <textarea
+              className="imdb-review-input"
+              rows={6}
+              value={imdbReviewText}
+              onChange={(e) => setImdbReviewText(e.target.value)}
+            />
+            <p
+              className={`char-count ${imdbReviewText.length >= 300 ? "char-count--good" : "char-count--warn"}`}
+            >
+              {imdbReviewText.length} / 300 minimum
+              {imdbReviewText.length < 300 ? " — IMDb will reject it below this" : ""}
+            </p>
+            <div className="frame__actions">
+              <CopyButton text={IMDB_REVIEW_TITLE} label="Copy review title" />
+              <CopyButton text={imdbReviewText} label="Copy review text" />
+              {imdbId ? (
+                <a className="link-out" href={imdbReviewsUrl(imdbId)} target="_blank" rel="noreferrer">
+                  Open IMDb reviews page &rarr;
+                </a>
+              ) : (
+                <a className="link-out" href={imdbSearchUrl(title)} target="_blank" rel="noreferrer">
+                  Open IMDb search (no direct match found) &rarr;
+                </a>
+              )}
               <label className="toggle">
-                <input
-                  type="checkbox"
-                  checked={showImdb}
-                  onChange={(e) => {
-                    setShowImdb(e.target.checked);
-                    if (e.target.checked && !imdbReviewText) {
-                      setImdbReviewText(imdbDefaultReviewText(input));
-                    }
-                  }}
-                />
-                include this review
+                <input type="checkbox" checked={postedImdb} onChange={(e) => setPostedImdb(e.target.checked)} />
+                posted
               </label>
-            }
-          >
-            {showImdb ? (
-              <>
-                <p className="frame__helper">
-                  Rating to select: {imdbRatingOutOf10(rating)}/10 &middot; Review title: {IMDB_REVIEW_TITLE}
-                </p>
-                <textarea
-                  className="imdb-review-input"
-                  rows={6}
-                  value={imdbReviewText}
-                  onChange={(e) => setImdbReviewText(e.target.value)}
-                />
-                <p
-                  className={`char-count ${
-                    imdbReviewText.length >= 300 ? "char-count--good" : "char-count--warn"
-                  }`}
-                >
-                  {imdbReviewText.length} / 300 minimum
-                  {imdbReviewText.length < 300 ? " — IMDb will reject it below this" : ""}
-                </p>
-                <div className="frame__actions">
-                  <CopyButton text={IMDB_REVIEW_TITLE} label="Copy review title" />
-                  <CopyButton text={imdbReviewText} label="Copy review text" />
-                  {imdbId ? (
-                    <a className="link-out" href={imdbReviewsUrl(imdbId)} target="_blank" rel="noreferrer">
-                      Open IMDb reviews page &rarr;
-                    </a>
-                  ) : (
-                    <a className="link-out" href={imdbSearchUrl(title)} target="_blank" rel="noreferrer">
-                      Open IMDb search (no direct match found) &rarr;
-                    </a>
-                  )}
-                  <label className="toggle">
-                    <input type="checkbox" checked={postedImdb} onChange={(e) => setPostedImdb(e.target.checked)} />
-                    posted
-                  </label>
-                </div>
-              </>
-            ) : (
-              <p className="frame__preview">Off by default. Turn on only for this specific review.</p>
-            )}
+            </div>
           </PlatformRow>
 
           <PlatformRow
@@ -498,11 +482,20 @@ export default function App() {
           >
             {showRT ? (
               <>
-                <p className="frame__preview">{letterboxdReviewText(input)}</p>
+                <p className="frame__preview">{rottenTomatoesReviewText(input)}</p>
+                <p className="frame__helper">Rating to select: {rating.toFixed(1)} ({ratingStars(rating)})</p>
                 <div className="frame__actions">
-                  <CopyButton text={letterboxdReviewText(input)} label="Copy review text" />
+                  <CopyButton text={rottenTomatoesReviewText(input)} label="Copy review text" />
+                  <a
+                    className="link-out"
+                    href={rottenTomatoesGuessedUrl(title, year)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Try direct page (guess) &rarr;
+                  </a>
                   <a className="link-out" href={rottenTomatoesSearchUrl(title)} target="_blank" rel="noreferrer">
-                    Open Rotten Tomatoes search &rarr;
+                    Open RT search (if guess is wrong) &rarr;
                   </a>
                   <label className="toggle">
                     <input type="checkbox" checked={postedRT} onChange={(e) => setPostedRT(e.target.checked)} />

@@ -184,3 +184,28 @@ export function imdbDefaultReviewText(input: ReviewInput): string {
 export function rottenTomatoesSearchUrl(title: string): string {
   return `https://www.rottentomatoes.com/search?search=${encodeURIComponent(title)}`;
 }
+
+/**
+ * Best-effort guess at Rotten Tomatoes' own slug convention (/m/title_year).
+ * RT has no public lookup API and no cross-reference on TMDB the way IMDb
+ * does, so unlike imdbReviewsUrl this is a guess, not a confirmed match.
+ * Strip punctuation, lowercase, underscores for spaces, year appended when
+ * known. Callers should offer the search URL alongside this as a fallback.
+ */
+export function rottenTomatoesGuessedUrl(title: string, year: string): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim()
+    .replace(/\s+/g, "_");
+  return year ? `https://www.rottentomatoes.com/m/${slug}_${year}` : `https://www.rottentomatoes.com/m/${slug}`;
+}
+
+/**
+ * Rotten Tomatoes' audience review format: hashtag first, blank line, then
+ * the haiku as one slash-separated line (matches what's shown under the
+ * star picker), same 0.5-5.0 scale as the house rating, no conversion.
+ */
+export function rottenTomatoesReviewText(input: ReviewInput): string {
+  return `#filmreviewhaiku\n\n${haikuBlock(input.haikuLines)}`;
+}
