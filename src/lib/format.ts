@@ -5,6 +5,7 @@ export interface ReviewInput {
   rating: number; // 0.5 - 5.0, half steps
   notes: string;
   posterUrl: string | null;
+  watchedDate: string; // YYYY-MM-DD, may be empty
 }
 
 export function ratingTag(rating: number): string {
@@ -47,6 +48,27 @@ export function ghostBody(input: ReviewInput): string {
   return `> ${haikuBlock(input.haikuLines)}`;
 }
 
+/**
+ * The ISO timestamp to use as the Bluesky post's createdAt. If a watched
+ * date is set, the post is backdated to that date (noon UTC) so Bluesky
+ * shows it as archived from when the film was actually watched, matching
+ * how the rest of the review history is dated. Falls back to the current
+ * moment if no watched date is set or it doesn't parse.
+ */
+export function blueskyCreatedAt(watchedDate: string): string {
+  if (!watchedDate) return new Date().toISOString();
+  const d = new Date(`${watchedDate}T12:00:00Z`);
+  if (isNaN(d.getTime())) return new Date().toISOString();
+  return d.toISOString();
+}
+
+export function formatDisplayDate(watchedDate: string): string {
+  if (!watchedDate) return "";
+  const d = new Date(`${watchedDate}T00:00:00Z`);
+  if (isNaN(d.getTime())) return watchedDate;
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+}
+
 export function notionSummary(input: ReviewInput): string {
   const lines = [
     `Film Title: ${input.title}`,
@@ -66,10 +88,12 @@ export interface ImportResult {
   haikuLines: [string, string, string];
   notes: string;
   posterUrl: string | null;
+  watchedDate: string;
 }
 
 /**
- * Parses the block produced by the film-haiku-publish skill:
+ * Parses the block produced by the film-haiku-publish skill or Notion's
+ * "Filmpost Import" formula column:
  *
  * Film Title: <title>
  * Year: <year>
@@ -77,6 +101,7 @@ export interface ImportResult {
  * Haiku: <line> / <line> / <line>
  * Extended Notes: <notes or (none)>
  * Poster URL: <url or (none)>
+ * Watched Date: <YYYY-MM-DD or (unknown)>
  */
 export function parseImportBlock(raw: string): ImportResult | { error: string } {
   const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -100,6 +125,7 @@ export function parseImportBlock(raw: string): ImportResult | { error: string } 
   const ratingNum = parseFloat(fields["rating"] ?? "");
   const notesRaw = fields["extended notes"] ?? "";
   const posterRaw = fields["poster url"] ?? "";
+  const watchedDateRaw = fields["watched date"] ?? "";
 
   return {
     title: fields["film title"],
@@ -108,6 +134,7 @@ export function parseImportBlock(raw: string): ImportResult | { error: string } 
     haikuLines: [haikuParts[0], haikuParts[1], haikuParts[2]],
     notes: notesRaw === "(none)" ? "" : notesRaw,
     posterUrl: !posterRaw || posterRaw === "(none)" ? null : posterRaw,
+    watchedDate: watchedDateRaw === "(unknown)" ? "" : watchedDateRaw,
   };
 }
 

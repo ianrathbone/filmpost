@@ -425,6 +425,13 @@
   line-height: 1.6;
 }
 
+.frame__helper {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--paper-faint);
+  margin: -2px 0 0;
+}
+
 .frame__actions {
   display: flex;
   gap: 10px;

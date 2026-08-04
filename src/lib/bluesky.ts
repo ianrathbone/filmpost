@@ -57,7 +57,8 @@ export async function postToBluesky(
   appPassword: string,
   text: string,
   hashtag: string,
-  posterUrl?: string | null
+  posterUrl?: string | null,
+  createdAt?: string
 ): Promise<{ url: string; imageEmbedded: boolean; posterError: string | null }> {
   const session = await createSession(handle, appPassword);
 
@@ -90,11 +91,12 @@ export async function postToBluesky(
     });
   }
 
-  // createdAt reflects the actual moment this post is sent, in UTC, as Bluesky expects.
+  // createdAt reflects either the actual moment this post is sent, or a
+  // supplied backdate (e.g. the film's watched date), in UTC as Bluesky expects.
   const record = {
     $type: "app.bsky.feed.post",
     text,
-    createdAt: new Date().toISOString(),
+    createdAt: createdAt || new Date().toISOString(),
     ...(facets.length ? { facets } : {}),
     ...(embed ? { embed } : {}),
   };

@@ -19,6 +19,8 @@ import {
   imdbSearchUrl,
   rottenTomatoesSearchUrl,
   parseImportBlock,
+  formatDisplayDate,
+  blueskyCreatedAt,
 } from "./lib/format";
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => 0.5 * (i + 1));
@@ -43,6 +45,7 @@ export default function App() {
   const [haikuLines, setHaikuLines] = useState<[string, string, string]>(["", "", ""]);
   const [rating, setRating] = useState(4.0);
   const [notes, setNotes] = useState("");
+  const [watchedDate, setWatchedDate] = useState("");
 
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [tmdbMeta, setTmdbMeta] = useState<TmdbResult | null>(null);
@@ -104,8 +107,8 @@ export default function App() {
   }
 
   const input: ReviewInput = useMemo(
-    () => ({ title, year, haikuLines, rating, notes, posterUrl }),
-    [title, year, haikuLines, rating, notes, posterUrl]
+    () => ({ title, year, haikuLines, rating, notes, posterUrl, watchedDate }),
+    [title, year, haikuLines, rating, notes, posterUrl, watchedDate]
   );
 
   const emDashFields: string[] = useMemo(() => {
@@ -125,15 +128,15 @@ export default function App() {
       setBlueskyStatus({ state: "error", message: "Add your Bluesky handle and app password in settings first." });
       return;
     }
-    const now = new Date();
-    const dateLabel = now.toLocaleString(undefined, {
+    const createdAt = blueskyCreatedAt(watchedDate);
+    const dateLabel = new Date(createdAt).toLocaleString(undefined, {
       dateStyle: "medium",
       timeStyle: "short",
     });
     const confirmed = window.confirm(
       `Post this to Bluesky as ${settings.blueskyHandle}, dated ${dateLabel}${
-        posterUrl ? " (poster attached)" : " (no poster to attach)"
-      }?\n\n${blueskyText}`
+        watchedDate ? " (your watched date)" : " (no watched date set, using now)"
+      }${posterUrl ? ", poster attached" : ", no poster to attach"}?\n\n${blueskyText}`
     );
     if (!confirmed) return;
 
@@ -144,7 +147,8 @@ export default function App() {
         settings.blueskyAppPassword,
         blueskyText,
         "filmreviewhaiku",
-        posterUrl
+        posterUrl,
+        createdAt
       );
       setBlueskyStatus({ state: "posted", url, imageEmbedded, posterError });
     } catch (err) {
@@ -187,6 +191,7 @@ export default function App() {
     setHaikuLines(result.haikuLines);
     setNotes(result.notes);
     setPosterUrl(result.posterUrl);
+    setWatchedDate(result.watchedDate);
     setTmdbMeta(null);
     setTmdbError(null);
     setImportText("");
@@ -257,6 +262,11 @@ export default function App() {
             {lookingUp ? "Looking up..." : "Look up poster"}
           </button>
         </div>
+
+        <label className="field" style={{ maxWidth: 220, marginBottom: 16 }}>
+          <span>Watched date (Bluesky's archive date)</span>
+          <input type="date" value={watchedDate} onChange={(e) => setWatchedDate(e.target.value)} />
+        </label>
 
         {tmdbError && <div className="error">{tmdbError}</div>}
 
@@ -345,6 +355,10 @@ export default function App() {
 
           <PlatformRow frame="03" name="Letterboxd" status="manual">
             <p className="frame__preview">{letterboxdReviewText(input)}</p>
+            <p className="frame__helper">
+              Watched {watchedDate ? formatDisplayDate(watchedDate) : "(no date set above)"} &middot; Rating{" "}
+              {rating.toFixed(1)} ({ratingStars(rating)})
+            </p>
             <div className="frame__actions">
               <CopyButton text={letterboxdReviewText(input)} label="Copy review text" />
               <a className="link-out" href={letterboxdSearchUrl(title)} target="_blank" rel="noreferrer">
