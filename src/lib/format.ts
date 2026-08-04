@@ -209,3 +209,30 @@ export function rottenTomatoesGuessedUrl(title: string, year: string): string {
 export function rottenTomatoesReviewText(input: ReviewInput): string {
   return `#filmreviewhaiku\n\n${haikuBlock(input.haikuLines)}`;
 }
+
+/**
+ * Best-effort guess at Metacritic's slug convention (/movie/title-year/).
+ * Same caveat as Rotten Tomatoes: no public lookup API, no cross-reference
+ * on TMDB, so this is a guess, pair with a search fallback.
+ */
+export function metacriticGuessedUrl(title: string, year: string): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+  return year ? `https://www.metacritic.com/movie/${slug}-${year}/` : `https://www.metacritic.com/movie/${slug}/`;
+}
+
+export function metacriticSearchUrl(title: string): string {
+  return `https://www.metacritic.com/search/${encodeURIComponent(title)}/`;
+}
+
+/**
+ * Metacritic's user score box: haiku first (single slash-separated line),
+ * blank line, then the hashtag, the reverse order from Rotten Tomatoes.
+ * Score is whole-number 1-10, same doubling as IMDb.
+ */
+export function metacriticReviewText(input: ReviewInput): string {
+  return `${haikuBlock(input.haikuLines)}\n\n#filmreviewhaiku`;
+}

@@ -29,6 +29,9 @@ import {
   IMDB_REVIEW_TITLE,
   rottenTomatoesGuessedUrl,
   rottenTomatoesReviewText,
+  metacriticGuessedUrl,
+  metacriticSearchUrl,
+  metacriticReviewText,
 } from "./lib/format";
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => 0.5 * (i + 1));
@@ -42,6 +45,7 @@ const NOTION_PLATFORM_LABEL: Record<string, string> = {
   Bluesky: "Bluesky",
   IMDb: "IMDb",
   "Rotten Tomatoes": "Rotten Tomatoes",
+  Metacritic: "Metacritic",
 };
 
 export default function App() {
@@ -61,7 +65,6 @@ export default function App() {
   const [lookingUp, setLookingUp] = useState(false);
   const [imdbId, setImdbId] = useState<string | null>(null);
 
-  const [showRT, setShowRT] = useState(false);
   const [imdbReviewText, setImdbReviewText] = useState("");
 
   const [showImport, setShowImport] = useState(false);
@@ -72,6 +75,7 @@ export default function App() {
   const [postedLetterboxd, setPostedLetterboxd] = useState(false);
   const [postedImdb, setPostedImdb] = useState(false);
   const [postedRT, setPostedRT] = useState(false);
+  const [postedMetacritic, setPostedMetacritic] = useState(false);
 
   const [blueskyStatus, setBlueskyStatus] = useState<
     | { state: "idle" }
@@ -227,8 +231,9 @@ export default function App() {
     if (blueskyStatus.state === "posted") labels.push(NOTION_PLATFORM_LABEL["Bluesky"]);
     if (postedImdb) labels.push(NOTION_PLATFORM_LABEL["IMDb"]);
     if (postedRT) labels.push(NOTION_PLATFORM_LABEL["Rotten Tomatoes"]);
+    if (postedMetacritic) labels.push(NOTION_PLATFORM_LABEL["Metacritic"]);
     return labels;
-  }, [postedGhost, postedLetterboxd, blueskyStatus, postedImdb, postedRT]);
+  }, [postedGhost, postedLetterboxd, blueskyStatus, postedImdb, postedRT, postedMetacritic]);
 
   const notionPlatformsPaste = postedPlatformLabels.join(", ");
   const notionStatusPaste = postedPlatformLabels.length > 0 ? "🚀 Published" : "✏️ Drafting";
@@ -349,7 +354,7 @@ export default function App() {
 
       {readyForPlatforms && (
         <>
-          <p className="reel-heading">Publish &middot; frame 1 of 6</p>
+          <p className="reel-heading">Publish &middot; frame 1 of 7</p>
 
           <PlatformRow frame="01" name="Notion" status="manual">
             <p className="frame__preview">{notionSummary(input)}</p>
@@ -469,43 +474,49 @@ export default function App() {
             </div>
           </PlatformRow>
 
-          <PlatformRow
-            frame="06"
-            name="Rotten Tomatoes"
-            status={showRT ? "manual" : "off"}
-            toggle={
+          <PlatformRow frame="06" name="Rotten Tomatoes" status="manual">
+            <p className="frame__preview">{rottenTomatoesReviewText(input)}</p>
+            <p className="frame__helper">Rating to select: {rating.toFixed(1)} ({ratingStars(rating)})</p>
+            <div className="frame__actions">
+              <CopyButton text={rottenTomatoesReviewText(input)} label="Copy review text" />
+              <a
+                className="link-out"
+                href={rottenTomatoesGuessedUrl(title, year)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Try direct page (guess) &rarr;
+              </a>
+              <a className="link-out" href={rottenTomatoesSearchUrl(title)} target="_blank" rel="noreferrer">
+                Open RT search (if guess is wrong) &rarr;
+              </a>
               <label className="toggle">
-                <input type="checkbox" checked={showRT} onChange={(e) => setShowRT(e.target.checked)} />
-                include this review
+                <input type="checkbox" checked={postedRT} onChange={(e) => setPostedRT(e.target.checked)} />
+                posted
               </label>
-            }
-          >
-            {showRT ? (
-              <>
-                <p className="frame__preview">{rottenTomatoesReviewText(input)}</p>
-                <p className="frame__helper">Rating to select: {rating.toFixed(1)} ({ratingStars(rating)})</p>
-                <div className="frame__actions">
-                  <CopyButton text={rottenTomatoesReviewText(input)} label="Copy review text" />
-                  <a
-                    className="link-out"
-                    href={rottenTomatoesGuessedUrl(title, year)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Try direct page (guess) &rarr;
-                  </a>
-                  <a className="link-out" href={rottenTomatoesSearchUrl(title)} target="_blank" rel="noreferrer">
-                    Open RT search (if guess is wrong) &rarr;
-                  </a>
-                  <label className="toggle">
-                    <input type="checkbox" checked={postedRT} onChange={(e) => setPostedRT(e.target.checked)} />
-                    posted
-                  </label>
-                </div>
-              </>
-            ) : (
-              <p className="frame__preview">Off by default. Turn on only for this specific review.</p>
-            )}
+            </div>
+          </PlatformRow>
+
+          <PlatformRow frame="07" name="Metacritic" status="manual">
+            <p className="frame__preview">{metacriticReviewText(input)}</p>
+            <p className="frame__helper">My Score: {imdbRatingOutOf10(rating)}/10</p>
+            <div className="frame__actions">
+              <CopyButton text={metacriticReviewText(input)} label="Copy review text" />
+              <a className="link-out" href={metacriticGuessedUrl(title, year)} target="_blank" rel="noreferrer">
+                Try direct page (guess) &rarr;
+              </a>
+              <a className="link-out" href={metacriticSearchUrl(title)} target="_blank" rel="noreferrer">
+                Open Metacritic search (if guess is wrong) &rarr;
+              </a>
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={postedMetacritic}
+                  onChange={(e) => setPostedMetacritic(e.target.checked)}
+                />
+                posted
+              </label>
+            </div>
           </PlatformRow>
 
           <section className="notion-update">
