@@ -28,13 +28,57 @@ function utf8ByteOffsets(text: string, substring: string): { start: number; end:
   return { start, end };
 }
 
+async function uploadImageBlob(accessJwt: string, imageUrl: string): Promise<any> {
+  const imgRes = await fetch(imageUrl);
+  if (!imgRes.ok) {
+    throw new Error(`Could not fetch the poster image (${imgRes.status}).`);
+  }
+  const contentType = imgRes.headers.get("content-type") || "image/jpeg";
+  const bytes = await imgRes.arrayBuffer();
+
+  const res = await fetch(`${ENTRYWAY}/xrpc/com.atproto.repo.uploadBlob`, {
+    method: "POST",
+    headers: {
+      "Content-Type": contentType,
+      Authorization: `Bearer ${accessJwt}`,
+    },
+    body: bytes,
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Bluesky image upload failed (${res.status}): ${body}`);
+  }
+  const data = await res.json();
+  return data.blob;
+}
+
 export async function postToBluesky(
   handle: string,
   appPassword: string,
   text: string,
-  hashtag: string
-): Promise<{ url: string }> {
+  hashtag: string,
+  posterUrl?: string | null
+): Promise<{ url: string; imageEmbedded: boolean; posterError: string | null }> {
   const session = await createSession(handle, appPassword);
+
+  let embed: any = undefined;
+  let imageEmbedded = false;
+  let posterError: string | null = null;
+
+  if (posterUrl) {
+    try {
+      const blob = await uploadImageBlob(session.accessJwt, posterUrl);
+      embed = {
+        $type: "app.bsky.embed.images",
+        images: [{ image: blob, alt: "Film poster" }],
+      };
+      imageEmbedded = true;
+    } catch (err) {
+      // Don't block the post over a failed image fetch/upload, just post without it
+      // and tell the caller so it can be surfaced to the user.
+      posterError = err instanceof Error ? err.message : "Could not attach the poster image.";
+    }
+  }
 
   const facets: any[] = [];
   const tagWithHash = `#${hashtag}`;
@@ -46,11 +90,13 @@ export async function postToBluesky(
     });
   }
 
+  // createdAt reflects the actual moment this post is sent, in UTC, as Bluesky expects.
   const record = {
     $type: "app.bsky.feed.post",
     text,
     createdAt: new Date().toISOString(),
     ...(facets.length ? { facets } : {}),
+    ...(embed ? { embed } : {}),
   };
 
   const res = await fetch(`${ENTRYWAY}/xrpc/com.atproto.repo.createRecord`, {
@@ -74,5 +120,5 @@ export async function postToBluesky(
   const data = await res.json();
   const rkey = (data.uri as string).split("/").pop();
   const handleClean = handle.replace(/^@/, "");
-  return { url: `https://bsky.app/profile/${handleClean}/post/${rkey}` };
+  return { url: `https://bsky.app/profile/${handleClean}/post/${rkey}`, imageEmbedded, posterError };
 }

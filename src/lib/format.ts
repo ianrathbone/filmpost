@@ -39,12 +39,12 @@ export function letterboxdReviewText(input: ReviewInput): string {
 
 export function blueskyCaption(input: ReviewInput): string {
   const label = input.year ? `${input.title} (${input.year})` : input.title;
-  return `${haikuMultiline(input.haikuLines)}\n\n${label} - #filmreviewhaiku`;
+  const stars = ratingStars(input.rating);
+  return `${label} - #filmreviewhaiku\n\n${haikuMultiline(input.haikuLines)}\n\n${stars}`;
 }
 
 export function ghostBody(input: ReviewInput): string {
-  const quote = `> ${haikuBlock(input.haikuLines)}`;
-  return input.notes ? `${quote}\n\n${input.notes}` : quote;
+  return `> ${haikuBlock(input.haikuLines)}`;
 }
 
 export function notionSummary(input: ReviewInput): string {

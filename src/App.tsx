@@ -62,8 +62,13 @@ export default function App() {
   const [postedRT, setPostedRT] = useState(false);
 
   const [blueskyStatus, setBlueskyStatus] = useState<
-    { state: "idle" } | { state: "posting" } | { state: "posted"; url: string } | { state: "error"; message: string }
+    | { state: "idle" }
+    | { state: "posting" }
+    | { state: "posted"; url: string; imageEmbedded: boolean; posterError: string | null }
+    | { state: "error"; message: string }
   >({ state: "idle" });
+
+  const [ghostDownloadError, setGhostDownloadError] = useState<string | null>(null);
 
   function updateSettings(next: Settings) {
     setSettings(next);
@@ -120,22 +125,52 @@ export default function App() {
       setBlueskyStatus({ state: "error", message: "Add your Bluesky handle and app password in settings first." });
       return;
     }
+    const now = new Date();
+    const dateLabel = now.toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
     const confirmed = window.confirm(
-      `Post this to Bluesky as ${settings.blueskyHandle}?\n\n${blueskyText}`
+      `Post this to Bluesky as ${settings.blueskyHandle}, dated ${dateLabel}${
+        posterUrl ? " (poster attached)" : " (no poster to attach)"
+      }?\n\n${blueskyText}`
     );
     if (!confirmed) return;
 
     setBlueskyStatus({ state: "posting" });
     try {
-      const { url } = await postToBluesky(
+      const { url, imageEmbedded, posterError } = await postToBluesky(
         settings.blueskyHandle,
         settings.blueskyAppPassword,
         blueskyText,
-        "filmreviewhaiku"
+        "filmreviewhaiku",
+        posterUrl
       );
-      setBlueskyStatus({ state: "posted", url });
+      setBlueskyStatus({ state: "posted", url, imageEmbedded, posterError });
     } catch (err) {
       setBlueskyStatus({ state: "error", message: err instanceof Error ? err.message : "Post failed." });
+    }
+  }
+
+  async function downloadPoster() {
+    if (!posterUrl) return;
+    setGhostDownloadError(null);
+    try {
+      const res = await fetch(posterUrl);
+      if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `${title || "poster"}-poster.jpg`.replace(/\s+/g, "-").toLowerCase();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      setGhostDownloadError(
+        "Could not download automatically. Right-click the poster preview above and choose \"Save image as\" instead."
+      );
     }
   }
 
@@ -296,12 +331,16 @@ export default function App() {
             <div className="frame__actions">
               <CopyButton text={ghostBody(input)} label="Copy body" />
               <CopyButton text={ratingTag(rating)} label={`Copy tag ${ratingTag(rating)}`} />
+              <button className="btn btn--ghost" onClick={downloadPoster} type="button" disabled={!posterUrl}>
+                Download poster
+              </button>
               <span className="char-count">template: custom-film-review.hbs</span>
               <label className="toggle">
                 <input type="checkbox" checked={postedGhost} onChange={(e) => setPostedGhost(e.target.checked)} />
                 posted
               </label>
             </div>
+            {ghostDownloadError && <div className="error">{ghostDownloadError}</div>}
           </PlatformRow>
 
           <PlatformRow frame="03" name="Letterboxd" status="manual">
@@ -342,9 +381,17 @@ export default function App() {
               </button>
             </div>
             {blueskyStatus.state === "posted" && (
-              <a className="posted-note" href={blueskyStatus.url} target="_blank" rel="noreferrer">
-                Posted &middot; view on Bluesky &rarr;
-              </a>
+              <>
+                <a className="posted-note" href={blueskyStatus.url} target="_blank" rel="noreferrer">
+                  Posted &middot; view on Bluesky &rarr;
+                </a>
+                {!blueskyStatus.imageEmbedded && posterUrl && (
+                  <div className="warning">
+                    Posted, but the poster couldn't be attached
+                    {blueskyStatus.posterError ? `: ${blueskyStatus.posterError}` : "."}
+                  </div>
+                )}
+              </>
             )}
             {blueskyStatus.state === "error" && <div className="error">{blueskyStatus.message}</div>}
           </PlatformRow>
