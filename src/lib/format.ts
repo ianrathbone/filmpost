@@ -48,6 +48,14 @@ export function ghostBody(input: ReviewInput): string {
   return `> ${haikuBlock(input.haikuLines)}`;
 }
 
+export function ghostTitle(input: ReviewInput): string {
+  return input.year ? `${input.title} (${input.year})` : input.title;
+}
+
+export function ghostTags(input: ReviewInput): string {
+  return [ratingTag(input.rating), "filmreviewhaiku", "film", "review", "haiku"].join(", ");
+}
+
 /**
  * The ISO timestamp to use as the Bluesky post's createdAt. If a watched
  * date is set, the post is backdated to that date (noon UTC) so Bluesky

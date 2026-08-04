@@ -21,6 +21,8 @@ import {
   parseImportBlock,
   formatDisplayDate,
   blueskyCreatedAt,
+  ghostTitle,
+  ghostTags,
 } from "./lib/format";
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => 0.5 * (i + 1));
@@ -339,8 +341,10 @@ export default function App() {
           <PlatformRow frame="02" name="Ghost" status="manual">
             <p className="frame__preview">{ghostBody(input)}</p>
             <div className="frame__actions">
+              <CopyButton text={ghostTitle(input)} label="Copy title" />
               <CopyButton text={ghostBody(input)} label="Copy body" />
-              <CopyButton text={ratingTag(rating)} label={`Copy tag ${ratingTag(rating)}`} />
+              <CopyButton text={ghostTags(input)} label="Copy tags" />
+              <CopyButton text={ratingTag(rating)} label={`Copy rating tag`} />
               <button className="btn btn--ghost" onClick={downloadPoster} type="button" disabled={!posterUrl}>
                 Download poster
               </button>
