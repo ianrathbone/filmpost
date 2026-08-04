@@ -1,0 +1,62 @@
+:root {
+  --ink: #14120f;
+  --ink-panel: #1c1914;
+  --ink-panel-raised: #241f18;
+  --rule: #3a3327;
+  --paper: #ede7da;
+  --paper-dim: #a89d87;
+  --paper-faint: #6b6353;
+  --ember: #c4432a;
+  --ember-dim: #7a2d1e;
+  --safelight-glow: rgba(196, 67, 42, 0.16);
+  --develop: #4c7a6b;
+  --develop-dim: #345349;
+  --warn: #c98a2c;
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "IBM Plex Sans", -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-body);
+}
+
+body {
+  background-image: radial-gradient(circle at 15% 0%, var(--safelight-glow), transparent 45%);
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--ember-dim);
+  color: var(--paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
