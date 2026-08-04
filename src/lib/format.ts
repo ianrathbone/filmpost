@@ -259,6 +259,20 @@ export function tmdbReviewBody(input: ReviewInput): string {
   return `${haikuBlock(input.haikuLines)}\n\n#filmreviewhaiku`;
 }
 
+export const TMDB_REVIEW_MIN_CHARS = 100;
+
+/**
+ * TMDB also enforces a minimum length (100 characters), same problem as
+ * IMDb's 300-character floor, just a lower bar. A bare haiku plus hashtag
+ * often falls short, so this is a starting point for an editable field:
+ * haiku, then extended notes if there are any to draw on, then the hashtag.
+ */
+export function tmdbDefaultReviewText(input: ReviewInput): string {
+  const base = haikuBlock(input.haikuLines);
+  const withNotes = input.notes ? `${base}\n\n${input.notes}` : base;
+  return `${withNotes}\n\n#filmreviewhaiku`;
+}
+
 /**
  * Best-effort guess at Plex Watch's slug convention
  * (/en-GB/movie/title-year/review). No public lookup API, no cross-reference

@@ -33,7 +33,8 @@ import {
   metacriticSearchUrl,
   metacriticReviewText,
   tmdbMovieUrl,
-  tmdbReviewBody,
+  tmdbDefaultReviewText,
+  TMDB_REVIEW_MIN_CHARS,
   plexGuessedUrl,
   plexSearchUrl,
   plexReviewText,
@@ -73,6 +74,7 @@ export default function App() {
   const [imdbId, setImdbId] = useState<string | null>(null);
 
   const [imdbReviewText, setImdbReviewText] = useState("");
+  const [tmdbReviewText, setTmdbReviewText] = useState("");
 
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
@@ -232,6 +234,15 @@ export default function App() {
   useEffect(() => {
     if (readyForPlatforms && !imdbReviewText) {
       setImdbReviewText(imdbDefaultReviewText(input));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyForPlatforms]);
+
+  // Same deal for TMDB, a lower 100-char floor, but a bare haiku still
+  // often falls short of it.
+  useEffect(() => {
+    if (readyForPlatforms && !tmdbReviewText) {
+      setTmdbReviewText(tmdbDefaultReviewText(input));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readyForPlatforms]);
@@ -627,10 +638,22 @@ export default function App() {
             name="TMDB"
             status={tmdbRatingStatus.state === "submitted" ? "posted" : "manual"}
           >
-            <p className="frame__preview">{tmdbReviewBody(input)}</p>
-            <p className="frame__helper">TMDB has no API for posting reviews, this stays copy-paste.</p>
+            <textarea
+              className="imdb-review-input"
+              rows={5}
+              value={tmdbReviewText}
+              onChange={(e) => setTmdbReviewText(e.target.value)}
+            />
+            <p
+              className={`char-count ${
+                tmdbReviewText.length >= TMDB_REVIEW_MIN_CHARS ? "char-count--good" : "char-count--warn"
+              }`}
+            >
+              {tmdbReviewText.length} / {TMDB_REVIEW_MIN_CHARS} minimum
+              {tmdbReviewText.length < TMDB_REVIEW_MIN_CHARS ? " — TMDB will reject it below this" : ""}
+            </p>
             <div className="frame__actions">
-              <CopyButton text={tmdbReviewBody(input)} label="Copy review text" />
+              <CopyButton text={tmdbReviewText} label="Copy review text" />
               {tmdbMeta ? (
                 <a className="link-out" href={tmdbMovieUrl(tmdbMeta.id, title)} target="_blank" rel="noreferrer">
                   Open TMDB movie page &rarr;
