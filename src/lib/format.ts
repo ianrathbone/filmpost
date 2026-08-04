@@ -154,6 +154,33 @@ export function imdbSearchUrl(title: string): string {
   return `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`;
 }
 
+export function imdbReviewsUrl(imdbId: string): string {
+  return `https://www.imdb.com/title/${imdbId}/reviews/`;
+}
+
+/**
+ * IMDb rates on a whole-number 1-10 scale. The house 0.5-5.0 half-star
+ * scale maps onto it exactly (each half-star step is one IMDb point), so
+ * this is a straight doubling, not a rounding approximation.
+ */
+export function imdbRatingOutOf10(rating: number): number {
+  return Math.round(rating * 2);
+}
+
+export const IMDB_REVIEW_TITLE = "Film Review Haiku";
+
+/**
+ * IMDb requires at least 300 characters in the review body, well beyond
+ * a haiku on its own. This is only a starting point for the editable IMDb
+ * review field in Filmpost, haiku first (each line as its own paragraph,
+ * unlike Letterboxd's single block), then extended notes if there are any
+ * to draw on.
+ */
+export function imdbDefaultReviewText(input: ReviewInput): string {
+  const haikuParagraphs = input.haikuLines.join("\n\n");
+  return input.notes ? `${haikuParagraphs}\n\n${input.notes}` : haikuParagraphs;
+}
+
 export function rottenTomatoesSearchUrl(title: string): string {
   return `https://www.rottentomatoes.com/search?search=${encodeURIComponent(title)}`;
 }

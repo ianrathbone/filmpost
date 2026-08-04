@@ -470,6 +470,31 @@
   color: var(--ember);
 }
 
+.char-count--good {
+  color: var(--develop);
+}
+
+.char-count--warn {
+  color: var(--warn);
+}
+
+.imdb-review-input {
+  width: 100%;
+  background: var(--ink);
+  border: 1px solid var(--rule);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 12px 14px;
+  border-radius: 3px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.imdb-review-input:focus {
+  border-color: var(--ember);
+}
+
 .toggle {
   margin-left: auto;
   display: flex;

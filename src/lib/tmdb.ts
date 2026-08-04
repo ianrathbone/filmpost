@@ -49,3 +49,23 @@ export async function tmdbSearch(
     matchCount: results.length,
   };
 }
+
+/**
+ * TMDB carries a cross-reference to the matching IMDb title id (tt1234567),
+ * which is the only reliable way to link straight to a film's IMDb reviews
+ * page, IMDb itself has no public search API. Returns null if TMDB has no
+ * IMDb id on file for this title or the lookup fails, callers should fall
+ * back to a plain IMDb title search in that case.
+ */
+export async function tmdbExternalIds(apiKey: string, tmdbId: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.themoviedb.org/3/movie/${tmdbId}/external_ids?api_key=${encodeURIComponent(apiKey)}`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.imdb_id || null;
+  } catch {
+    return null;
+  }
+}

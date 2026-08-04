@@ -4,7 +4,7 @@ import { CopyButton } from "./components/CopyButton";
 import { PlatformRow } from "./components/PlatformRow";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { loadSettings, saveSettings, Settings } from "./lib/storage";
-import { tmdbSearch, TmdbResult } from "./lib/tmdb";
+import { tmdbSearch, tmdbExternalIds, TmdbResult } from "./lib/tmdb";
 import { postToBluesky } from "./lib/bluesky";
 import {
   ReviewInput,
@@ -23,6 +23,10 @@ import {
   blueskyCreatedAt,
   ghostTitle,
   ghostTags,
+  imdbReviewsUrl,
+  imdbRatingOutOf10,
+  imdbDefaultReviewText,
+  IMDB_REVIEW_TITLE,
 } from "./lib/format";
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => 0.5 * (i + 1));
@@ -53,9 +57,11 @@ export default function App() {
   const [tmdbMeta, setTmdbMeta] = useState<TmdbResult | null>(null);
   const [tmdbError, setTmdbError] = useState<string | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
+  const [imdbId, setImdbId] = useState<string | null>(null);
 
   const [showImdb, setShowImdb] = useState(false);
   const [showRT, setShowRT] = useState(false);
+  const [imdbReviewText, setImdbReviewText] = useState("");
 
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
@@ -96,6 +102,7 @@ export default function App() {
     }
     setLookingUp(true);
     setTmdbError(null);
+    setImdbId(null);
     const result = await tmdbSearch(settings.tmdbKey, title.trim(), year.trim());
     setLookingUp(false);
     if ("error" in result) {
@@ -106,6 +113,7 @@ export default function App() {
     setTmdbMeta(result);
     setPosterUrl(result.posterUrl);
     if (!year && result.releaseYear) setYear(result.releaseYear);
+    tmdbExternalIds(settings.tmdbKey, result.id).then(setImdbId);
   }
 
   const input: ReviewInput = useMemo(
@@ -196,6 +204,7 @@ export default function App() {
     setWatchedDate(result.watchedDate);
     setTmdbMeta(null);
     setTmdbError(null);
+    setImdbId(null);
     setImportText("");
     setShowImport(false);
   }
@@ -420,19 +429,51 @@ export default function App() {
             status={showImdb ? "manual" : "off"}
             toggle={
               <label className="toggle">
-                <input type="checkbox" checked={showImdb} onChange={(e) => setShowImdb(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={showImdb}
+                  onChange={(e) => {
+                    setShowImdb(e.target.checked);
+                    if (e.target.checked && !imdbReviewText) {
+                      setImdbReviewText(imdbDefaultReviewText(input));
+                    }
+                  }}
+                />
                 include this review
               </label>
             }
           >
             {showImdb ? (
               <>
-                <p className="frame__preview">{letterboxdReviewText(input)}</p>
+                <p className="frame__helper">
+                  Rating to select: {imdbRatingOutOf10(rating)}/10 &middot; Review title: {IMDB_REVIEW_TITLE}
+                </p>
+                <textarea
+                  className="imdb-review-input"
+                  rows={6}
+                  value={imdbReviewText}
+                  onChange={(e) => setImdbReviewText(e.target.value)}
+                />
+                <p
+                  className={`char-count ${
+                    imdbReviewText.length >= 300 ? "char-count--good" : "char-count--warn"
+                  }`}
+                >
+                  {imdbReviewText.length} / 300 minimum
+                  {imdbReviewText.length < 300 ? " — IMDb will reject it below this" : ""}
+                </p>
                 <div className="frame__actions">
-                  <CopyButton text={letterboxdReviewText(input)} label="Copy review text" />
-                  <a className="link-out" href={imdbSearchUrl(title)} target="_blank" rel="noreferrer">
-                    Open IMDb search &rarr;
-                  </a>
+                  <CopyButton text={IMDB_REVIEW_TITLE} label="Copy review title" />
+                  <CopyButton text={imdbReviewText} label="Copy review text" />
+                  {imdbId ? (
+                    <a className="link-out" href={imdbReviewsUrl(imdbId)} target="_blank" rel="noreferrer">
+                      Open IMDb reviews page &rarr;
+                    </a>
+                  ) : (
+                    <a className="link-out" href={imdbSearchUrl(title)} target="_blank" rel="noreferrer">
+                      Open IMDb search (no direct match found) &rarr;
+                    </a>
+                  )}
                   <label className="toggle">
                     <input type="checkbox" checked={postedImdb} onChange={(e) => setPostedImdb(e.target.checked)} />
                     posted
