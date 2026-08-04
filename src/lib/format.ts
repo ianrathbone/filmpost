@@ -236,3 +236,25 @@ export function metacriticSearchUrl(title: string): string {
 export function metacriticReviewText(input: ReviewInput): string {
   return `${haikuBlock(input.haikuLines)}\n\n#filmreviewhaiku`;
 }
+
+/**
+ * TMDB movie page URL, built from the numeric id we already have from the
+ * lookup, this one is reliable (not a guess like RT/Metacritic) since the
+ * slug portion is cosmetic, TMDB routes on the id prefix.
+ */
+export function tmdbMovieUrl(id: number, title: string): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+  return `https://www.themoviedb.org/movie/${id}-${slug}`;
+}
+
+/**
+ * TMDB's review box supports Markdown, so the blockquote syntax renders
+ * as an actual quote there, same convention as the Ghost body.
+ */
+export function tmdbReviewBody(input: ReviewInput): string {
+  return `> ${haikuBlock(input.haikuLines)}`;
+}

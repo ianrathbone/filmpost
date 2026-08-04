@@ -38,6 +38,22 @@ export function SettingsPanel({
           />
         </label>
 
+        <div className="field">
+          <span>TMDB account (for rating submission)</span>
+          {settings.tmdbSessionId ? (
+            <div className="frame__actions">
+              <span className="posted-note">Connected</span>
+              <button className="copy-btn" type="button" onClick={() => set("tmdbSessionId", "")}>
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <span className="notion-update__hint" style={{ margin: 0 }}>
+              Not connected yet, use the "Connect TMDB account" button on the TMDB frame below.
+            </span>
+          )}
+        </div>
+
         <label className="field">
           <span>Bluesky handle</span>
           <input
