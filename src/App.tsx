@@ -19,6 +19,7 @@ import {
   imdbSearchUrl,
   rottenTomatoesSearchUrl,
   parseImportBlock,
+  ImportResult,
   formatDisplayDate,
   blueskyCreatedAt,
   ghostTitle,
@@ -305,13 +306,7 @@ export default function App() {
     }
   }
 
-  function handleImport() {
-    const result = parseImportBlock(importText);
-    if ("error" in result) {
-      setImportError(result.error);
-      return;
-    }
-    setImportError(null);
+  function applyImportResult(result: ImportResult) {
     setTitle(result.title);
     setYear(result.year);
     setRating(result.rating);
@@ -322,9 +317,46 @@ export default function App() {
     setTmdbMeta(null);
     setTmdbError(null);
     setImdbId(null);
+  }
+
+  function handleImport() {
+    const result = parseImportBlock(importText);
+    if ("error" in result) {
+      setImportError(result.error);
+      return;
+    }
+    setImportError(null);
+    applyImportResult(result);
     setImportText("");
     setShowImport(false);
   }
+
+  // Notion's "Open in Filmpost" link lands here with ?import=<encoded block>,
+  // same content and parser as the paste box, just automatic. Runs once on
+  // load, then strips the param so a refresh doesn't re-trigger it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const importParam = params.get("import");
+    if (importParam) {
+      try {
+        const decoded = decodeURIComponent(importParam);
+        const result = parseImportBlock(decoded);
+        if ("error" in result) {
+          setImportError(`Link import failed: ${result.error}`);
+          setShowImport(true);
+        } else {
+          applyImportResult(result);
+        }
+      } catch {
+        setImportError("Link import failed: could not decode the data in the URL.");
+        setShowImport(true);
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.delete("import");
+      window.history.replaceState({}, "", url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const postedPlatformLabels: string[] = useMemo(() => {
     const labels: string[] = [];
