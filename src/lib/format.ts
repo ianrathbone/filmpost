@@ -184,55 +184,17 @@ export function rottenTomatoesSearchUrl(title: string): string {
 }
 
 /**
- * Best-effort guess at Rotten Tomatoes' own slug convention (/m/title_year).
- * RT has no public lookup API and no cross-reference on TMDB the way IMDb
- * does, so unlike imdbReviewsUrl this is a guess, not a confirmed match.
- * Strip punctuation, lowercase, underscores for spaces, year appended when
- * known. Callers should offer the search URL alongside this as a fallback.
- */
-export function rottenTomatoesGuessedUrl(title: string, year: string): string {
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")
-    .trim()
-    .replace(/\s+/g, "_");
-  return year ? `https://www.rottentomatoes.com/m/${slug}_${year}` : `https://www.rottentomatoes.com/m/${slug}`;
-}
-
-/**
  * Rotten Tomatoes' audience review format: hashtag first, blank line, then
  * the haiku as one slash-separated line (matches what's shown under the
  * star picker), same 0.5-5.0 scale as the house rating, no conversion.
+ * Also the shared text for Metacritic and TMDB.
  */
 export function rottenTomatoesReviewText(input: ReviewInput): string {
   return `#filmreviewhaiku\n\n${haikuBlock(input.haikuLines)}`;
 }
 
-/**
- * Best-effort guess at Metacritic's slug convention (/movie/title-year/).
- * Same caveat as Rotten Tomatoes: no public lookup API, no cross-reference
- * on TMDB, so this is a guess, pair with a search fallback.
- */
-export function metacriticGuessedUrl(title: string, year: string): string {
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
-  return year ? `https://www.metacritic.com/movie/${slug}-${year}/` : `https://www.metacritic.com/movie/${slug}/`;
-}
-
 export function metacriticSearchUrl(title: string): string {
   return `https://www.metacritic.com/search/${encodeURIComponent(title)}/`;
-}
-
-/**
- * Metacritic's user score box: haiku first (single slash-separated line),
- * blank line, then the hashtag, the reverse order from Rotten Tomatoes.
- * Score is whole-number 1-10, same doubling as IMDb.
- */
-export function metacriticReviewText(input: ReviewInput): string {
-  return `${haikuBlock(input.haikuLines)}\n\n#filmreviewhaiku`;
 }
 
 /**
@@ -249,27 +211,11 @@ export function tmdbMovieUrl(id: number, title: string): string {
   return `https://www.themoviedb.org/movie/${id}-${slug}`;
 }
 
-/**
- * TMDB's review box supports Markdown, but Ian's actual usage matches the
- * same haiku-then-hashtag format as Metacritic and Plex, not a blockquote.
- */
-export function tmdbReviewBody(input: ReviewInput): string {
-  return `${haikuBlock(input.haikuLines)}\n\n#filmreviewhaiku`;
+export function tmdbSearchUrl(title: string): string {
+  return `https://www.themoviedb.org/search?query=${encodeURIComponent(title)}`;
 }
 
 export const TMDB_REVIEW_MIN_CHARS = 100;
-
-/**
- * TMDB also enforces a minimum length (100 characters), same problem as
- * IMDb's 300-character floor, just a lower bar. A bare haiku plus hashtag
- * often falls short, so this is a starting point for an editable field:
- * haiku, then extended notes if there are any to draw on, then the hashtag.
- */
-export function tmdbDefaultReviewText(input: ReviewInput): string {
-  const base = haikuBlock(input.haikuLines);
-  const withNotes = input.notes ? `${base}\n\n${input.notes}` : base;
-  return `${withNotes}\n\n#filmreviewhaiku`;
-}
 
 /**
  * Best-effort guess at Plex Watch's slug convention

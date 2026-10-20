@@ -10,8 +10,9 @@ publication. Built for the `rathbone.dev` film review pipeline.
   low-confidence)
 - Auto-posts to Bluesky (with an in-app confirmation before it sends)
 - Gives copy-ready, correctly formatted blocks for Ghost, Letterboxd, IMDb,
-  Rotten Tomatoes, Metacritic, TMDB and Plex, plus a link for each so you can
-  paste straight into the right page. The Ghost frame links to the Ghost
+  Rotten Tomatoes, Plex, and one shared text for Rotten Tomatoes / Metacritic /
+  TMDB (Rotten Tomatoes format) with a button that opens all three searches in
+  new tabs, plus a link for each so you can paste straight into the right page. The Ghost frame links to the Ghost
   admin editor and copies each tag separately (paste, then press Enter)
 - Import: open the film's Notion record and click "Open in Filmpost" (or
   paste its "Filmpost Import" value), and Filmpost fills in title, year,

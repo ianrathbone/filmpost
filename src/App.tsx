@@ -27,13 +27,10 @@ import {
   imdbRatingOutOf10,
   imdbDefaultReviewText,
   IMDB_REVIEW_TITLE,
-  rottenTomatoesGuessedUrl,
   rottenTomatoesReviewText,
-  metacriticGuessedUrl,
   metacriticSearchUrl,
-  metacriticReviewText,
   tmdbMovieUrl,
-  tmdbDefaultReviewText,
+  tmdbSearchUrl,
   TMDB_REVIEW_MIN_CHARS,
   plexGuessedUrl,
   plexSearchUrl,
@@ -60,7 +57,7 @@ export default function App() {
   const [imdbId, setImdbId] = useState<string | null>(null);
 
   const [imdbReviewText, setImdbReviewText] = useState("");
-  const [tmdbReviewText, setTmdbReviewText] = useState("");
+  const [sharedReviewOverride, setSharedReviewOverride] = useState<string | null>(null);
 
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
@@ -224,17 +221,19 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readyForPlatforms]);
 
-  // Same deal for TMDB, a lower 100-char floor, but a bare haiku still
-  // often falls short of it.
-  useEffect(() => {
-    if (readyForPlatforms && !tmdbReviewText) {
-      setTmdbReviewText(tmdbDefaultReviewText(input));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readyForPlatforms]);
-
   const blueskyText = blueskyCaption(input);
   const blueskyOverLimit = blueskyText.length > 300;
+
+  // One text for Rotten Tomatoes, Metacritic and TMDB. Follows the haiku
+  // until it is edited by hand; "Reset to haiku" hands it back.
+  const sharedReviewText = sharedReviewOverride ?? rottenTomatoesReviewText(input);
+  const tmdbPageUrl = tmdbMeta ? tmdbMovieUrl(tmdbMeta.id, title) : tmdbSearchUrl(title);
+
+  function openAllSearches() {
+    [rottenTomatoesSearchUrl(title), metacriticSearchUrl(title), tmdbPageUrl].forEach((url) =>
+      window.open(url, "_blank", "noopener,noreferrer")
+    );
+  }
 
   async function handleBlueskyPost() {
     if (!settings.blueskyHandle || !settings.blueskyAppPassword) {
@@ -435,7 +434,7 @@ export default function App() {
 
         <div className="slate__grid">
           <label className="field">
-            <span>Extended notes (optional, used for IMDb and TMDB)</span>
+            <span>Extended notes (optional, used for IMDb)</span>
             <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </label>
           <label className="field">
@@ -459,7 +458,7 @@ export default function App() {
 
       {readyForPlatforms && (
         <>
-          <p className="reel-heading">Publish &middot; frame 1 of 8</p>
+          <p className="reel-heading">Publish &middot; frame 1 of 6</p>
 
           <PlatformRow frame="01" name="Ghost" status="manual">
             <p className="frame__preview">{ghostBody(input)}</p>
@@ -579,39 +578,52 @@ export default function App() {
             </div>
           </PlatformRow>
 
-          <PlatformRow frame="05" name="Rotten Tomatoes" status="manual">
-            <p className="frame__preview">{rottenTomatoesReviewText(input)}</p>
-            <p className="frame__helper">Rating to select: {rating.toFixed(1)} ({ratingStars(rating)})</p>
+          <PlatformRow frame="05" name="Rotten Tomatoes / Metacritic / TMDB" status="manual">
+            <textarea
+              className="imdb-review-input"
+              rows={4}
+              value={sharedReviewText}
+              onChange={(e) => setSharedReviewOverride(e.target.value)}
+            />
+            <p
+              className={`char-count ${
+                sharedReviewText.length >= TMDB_REVIEW_MIN_CHARS ? "char-count--good" : "char-count--warn"
+              }`}
+            >
+              {sharedReviewText.length} / {TMDB_REVIEW_MIN_CHARS} minimum for TMDB
+              {sharedReviewText.length < TMDB_REVIEW_MIN_CHARS ? ", TMDB will reject it below this" : ""}
+            </p>
             <div className="frame__actions">
-              <CopyButton text={rottenTomatoesReviewText(input)} label="Copy review text" />
-              <a
-                className="link-out"
-                href={rottenTomatoesGuessedUrl(title, year)}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Try direct page (guess) &rarr;
-              </a>
+              <CopyButton text={sharedReviewText} label="Copy review text" />
+              <button className="btn" onClick={openAllSearches} type="button" disabled={!title.trim()}>
+                Open all three
+              </button>
+              {sharedReviewOverride !== null && (
+                <button className="btn btn--ghost" onClick={() => setSharedReviewOverride(null)} type="button">
+                  Reset to haiku
+                </button>
+              )}
+            </div>
+
+            <p className="frame__helper" style={{ marginTop: 12 }}>
+              Rotten Tomatoes &middot; rating to select: {rating.toFixed(1)} ({ratingStars(rating)})
+            </p>
+            <div className="frame__actions">
               <a className="link-out" href={rottenTomatoesSearchUrl(title)} target="_blank" rel="noreferrer">
-                Open RT search (if guess is wrong) &rarr;
+                Open Rotten Tomatoes search &rarr;
               </a>
               <label className="toggle">
                 <input type="checkbox" checked={postedRT} onChange={(e) => setPostedRT(e.target.checked)} />
                 posted
               </label>
             </div>
-          </PlatformRow>
 
-          <PlatformRow frame="06" name="Metacritic" status="manual">
-            <p className="frame__preview">{metacriticReviewText(input)}</p>
-            <p className="frame__helper">My Score: {imdbRatingOutOf10(rating)}/10</p>
+            <p className="frame__helper" style={{ marginTop: 12 }}>
+              Metacritic &middot; My Score: {imdbRatingOutOf10(rating)}/10
+            </p>
             <div className="frame__actions">
-              <CopyButton text={metacriticReviewText(input)} label="Copy review text" />
-              <a className="link-out" href={metacriticGuessedUrl(title, year)} target="_blank" rel="noreferrer">
-                Try direct page (guess) &rarr;
-              </a>
               <a className="link-out" href={metacriticSearchUrl(title)} target="_blank" rel="noreferrer">
-                Open Metacritic search (if guess is wrong) &rarr;
+                Open Metacritic search &rarr;
               </a>
               <label className="toggle">
                 <input
@@ -622,36 +634,14 @@ export default function App() {
                 posted
               </label>
             </div>
-          </PlatformRow>
 
-          <PlatformRow
-            frame="07"
-            name="TMDB"
-            status={tmdbRatingStatus.state === "submitted" ? "posted" : "manual"}
-          >
-            <textarea
-              className="imdb-review-input"
-              rows={5}
-              value={tmdbReviewText}
-              onChange={(e) => setTmdbReviewText(e.target.value)}
-            />
-            <p
-              className={`char-count ${
-                tmdbReviewText.length >= TMDB_REVIEW_MIN_CHARS ? "char-count--good" : "char-count--warn"
-              }`}
-            >
-              {tmdbReviewText.length} / {TMDB_REVIEW_MIN_CHARS} minimum
-              {tmdbReviewText.length < TMDB_REVIEW_MIN_CHARS ? " — TMDB will reject it below this" : ""}
+            <p className="frame__helper" style={{ marginTop: 12 }}>
+              TMDB &middot; rating to submit: {imdbRatingOutOf10(rating)}/10, this one posts through the API
             </p>
             <div className="frame__actions">
-              <CopyButton text={tmdbReviewText} label="Copy review text" />
-              {tmdbMeta ? (
-                <a className="link-out" href={tmdbMovieUrl(tmdbMeta.id, title)} target="_blank" rel="noreferrer">
-                  Open TMDB movie page &rarr;
-                </a>
-              ) : (
-                <span className="char-count">Run "Look up poster" above first</span>
-              )}
+              <a className="link-out" href={tmdbPageUrl} target="_blank" rel="noreferrer">
+                {tmdbMeta ? "Open TMDB movie page" : "Open TMDB search"} &rarr;
+              </a>
               <label className="toggle">
                 <input
                   type="checkbox"
@@ -660,12 +650,6 @@ export default function App() {
                 />
                 review posted
               </label>
-            </div>
-
-            <p className="frame__helper" style={{ marginTop: 8 }}>
-              Rating to submit: {imdbRatingOutOf10(rating)}/10 &middot; this one does post through the API
-            </p>
-            <div className="frame__actions">
               {settings.tmdbSessionId ? (
                 <button
                   className="btn"
@@ -681,11 +665,12 @@ export default function App() {
               )}
               {tmdbRatingStatus.state === "submitted" && <span className="posted-note">Rated on TMDB</span>}
             </div>
+            {!tmdbMeta && <p className="char-count">Run "Look up poster" above to enable the TMDB rating button</p>}
             {tmdbAuthStatus.state === "error" && <div className="error">{tmdbAuthStatus.message}</div>}
             {tmdbRatingStatus.state === "error" && <div className="error">{tmdbRatingStatus.message}</div>}
           </PlatformRow>
 
-          <PlatformRow frame="08" name="Plex" status="manual">
+          <PlatformRow frame="06" name="Plex" status="manual">
             <p className="frame__preview">{plexReviewText(input)}</p>
             <p className="frame__helper">
               Rating to select: {rating.toFixed(1)} ({ratingStars(rating)}) &middot; Plex has no API for this
