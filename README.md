@@ -6,14 +6,17 @@ publication. Built for the `rathbone.dev` film review pipeline.
 ## What it does
 
 - Takes title, year, haiku, rating, and extended notes
-- Looks up the poster automatically via TMDB (top match, flags low-confidence)
+- Looks up the poster via TMDB when you click "Look up poster" (top match, flags
+  low-confidence)
 - Auto-posts to Bluesky (with an in-app confirmation before it sends)
 - Gives copy-ready, correctly formatted blocks for Notion, Ghost, Letterboxd,
   IMDb, and Rotten Tomatoes, plus a one-click search link for each so you can
   paste straight into the right page
-- Import: paste the block the `film-haiku-publish` skill outputs after it
-  writes the Notion record, and Filmpost fills in title, year, rating,
-  haiku, notes, and poster in one go
+- Import: open the film's Notion record and click "Open in Filmpost" (or
+  paste its "Filmpost Import" value), and Filmpost fills in title, year,
+  rating, haiku, notes, and watched date in one go. If the record has no poster
+  URL, click "Look up poster" afterwards. The Notion record is created by the
+  `film-haiku-draft` Claude skill once the final haiku is chosen
 - Tracks which platforms you've marked "posted" and gives you a ready-to-paste
   Status and Platforms value for the Notion record, paste straight into the
   table view cells, comma-separated values create/select multi-select tags
