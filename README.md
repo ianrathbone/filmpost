@@ -9,29 +9,25 @@ publication. Built for the `rathbone.dev` film review pipeline.
 - Looks up the poster via TMDB when you click "Look up poster" (top match, flags
   low-confidence)
 - Auto-posts to Bluesky (with an in-app confirmation before it sends)
-- Gives copy-ready, correctly formatted blocks for Notion, Ghost, Letterboxd,
-  IMDb, and Rotten Tomatoes, plus a one-click search link for each so you can
-  paste straight into the right page
+- Gives copy-ready, correctly formatted blocks for Ghost, Letterboxd, IMDb,
+  Rotten Tomatoes, Metacritic, TMDB and Plex, plus a link for each so you can
+  paste straight into the right page. The Ghost frame links to the Ghost
+  admin editor and copies each tag separately (paste, then press Enter)
 - Import: open the film's Notion record and click "Open in Filmpost" (or
   paste its "Filmpost Import" value), and Filmpost fills in title, year,
   rating, haiku, notes, and watched date in one go. If the record has no poster
   URL, click "Look up poster" afterwards. The Notion record is created by the
   `film-haiku-draft` Claude skill once the final haiku is chosen
-- Tracks which platforms you've marked "posted" and gives you a ready-to-paste
-  Status and Platforms value for the Notion record, paste straight into the
-  table view cells, comma-separated values create/select multi-select tags
-  automatically, no need to touch Notion's schema
 - Enforces house style: no em dashes (flags them if found), rating tags in
-  the `#rating-X-X` format, `#filmreviewhaiku` hashtag on Bluesky
+  the `#rating-4` / `#rating-3-5` format, `#filmreviewhaiku` hashtag on Bluesky
 
 IMDb and Rotten Tomatoes are off by default, toggle them on per review.
 
-## Why Notion and Ghost aren't automated
+## Why Ghost isn't automated
 
-Both the Notion API and the Ghost Admin API block direct requests from
-browser JavaScript (no CORS headers on either), so a pure client-side app
-like this one cannot post to them directly without a backend. Rather than
-add a server, those two stay copy-paste. TMDB and Bluesky's AT Protocol are
+The Ghost Admin API blocks direct requests from browser JavaScript (no CORS
+headers), so a pure client-side app like this one cannot post to it without a
+backend. Rather than add a server, Ghost stays copy-paste. TMDB and Bluesky's AT Protocol are
 both designed for browser use and work directly.
 
 ## Running it

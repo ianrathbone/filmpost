@@ -8,12 +8,10 @@ import { tmdbSearch, tmdbExternalIds, tmdbCreateRequestToken, tmdbApproveUrl, tm
 import { postToBluesky } from "./lib/bluesky";
 import {
   ReviewInput,
-  ratingTag,
   ratingStars,
   findEmDashes,
   blueskyCaption,
   ghostBody,
-  notionSummary,
   letterboxdReviewText,
   letterboxdSearchUrl,
   imdbSearchUrl,
@@ -23,7 +21,8 @@ import {
   formatDisplayDate,
   blueskyCreatedAt,
   ghostTitle,
-  ghostTags,
+  ghostTagList,
+  GHOST_EDITOR_URL,
   imdbReviewsUrl,
   imdbRatingOutOf10,
   imdbDefaultReviewText,
@@ -42,20 +41,6 @@ import {
 } from "./lib/format";
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => 0.5 * (i + 1));
-
-// Maps Filmpost's platform names to the exact option labels used in the
-// Notion "Platforms" multi-select property, so the paste works without
-// creating duplicate/mismatched tags.
-const NOTION_PLATFORM_LABEL: Record<string, string> = {
-  Ghost: "Blog",
-  Letterboxd: "Letterboxd",
-  Bluesky: "Bluesky",
-  IMDb: "IMDb",
-  "Rotten Tomatoes": "Rotten Tomatoes",
-  Metacritic: "Metacritic",
-  TMDB: "TMDB",
-  Plex: "Plex",
-};
 
 export default function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings());
@@ -358,32 +343,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const postedPlatformLabels: string[] = useMemo(() => {
-    const labels: string[] = [];
-    if (postedGhost) labels.push(NOTION_PLATFORM_LABEL["Ghost"]);
-    if (postedLetterboxd) labels.push(NOTION_PLATFORM_LABEL["Letterboxd"]);
-    if (blueskyStatus.state === "posted") labels.push(NOTION_PLATFORM_LABEL["Bluesky"]);
-    if (postedImdb) labels.push(NOTION_PLATFORM_LABEL["IMDb"]);
-    if (postedRT) labels.push(NOTION_PLATFORM_LABEL["Rotten Tomatoes"]);
-    if (postedMetacritic) labels.push(NOTION_PLATFORM_LABEL["Metacritic"]);
-    if (postedTmdbReview || tmdbRatingStatus.state === "submitted") labels.push(NOTION_PLATFORM_LABEL["TMDB"]);
-    if (postedPlex) labels.push(NOTION_PLATFORM_LABEL["Plex"]);
-    return labels;
-  }, [
-    postedGhost,
-    postedLetterboxd,
-    blueskyStatus,
-    postedImdb,
-    postedRT,
-    postedMetacritic,
-    postedTmdbReview,
-    tmdbRatingStatus,
-    postedPlex,
-  ]);
-
-  const notionPlatformsPaste = postedPlatformLabels.join(", ");
-  const notionStatusPaste = postedPlatformLabels.length > 0 ? "🚀 Published" : "✏️ Drafting";
-
   return (
     <div className="app">
       <header className="app__header">
@@ -476,7 +435,7 @@ export default function App() {
 
         <div className="slate__grid">
           <label className="field">
-            <span>Extended notes (optional, Notion only)</span>
+            <span>Extended notes (optional, used for IMDb and TMDB)</span>
             <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </label>
           <label className="field">
@@ -500,22 +459,16 @@ export default function App() {
 
       {readyForPlatforms && (
         <>
-          <p className="reel-heading">Publish &middot; frame 1 of 9</p>
+          <p className="reel-heading">Publish &middot; frame 1 of 8</p>
 
-          <PlatformRow frame="01" name="Notion" status="manual">
-            <p className="frame__preview">{notionSummary(input)}</p>
-            <div className="frame__actions">
-              <CopyButton text={notionSummary(input)} label="Copy record" />
-            </div>
-          </PlatformRow>
-
-          <PlatformRow frame="02" name="Ghost" status="manual">
+          <PlatformRow frame="01" name="Ghost" status="manual">
             <p className="frame__preview">{ghostBody(input)}</p>
             <div className="frame__actions">
+              <a className="link-out" href={GHOST_EDITOR_URL} target="_blank" rel="noreferrer">
+                Open Ghost Admin - The Rathblog &rarr;
+              </a>
               <CopyButton text={ghostTitle(input)} label="Copy title" />
               <CopyButton text={ghostBody(input)} label="Copy body" />
-              <CopyButton text={ghostTags(input)} label="Copy tags" />
-              <CopyButton text={ratingTag(rating)} label={`Copy rating tag`} />
               <button className="btn btn--ghost" onClick={downloadPoster} type="button" disabled={!posterUrl}>
                 Download poster
               </button>
@@ -525,10 +478,16 @@ export default function App() {
                 posted
               </label>
             </div>
+            <div className="frame__actions">
+              <span className="char-count">Tags, paste each then press Enter:</span>
+              {ghostTagList(input).map((tag) => (
+                <CopyButton key={tag} text={tag} label={tag} />
+              ))}
+            </div>
             {ghostDownloadError && <div className="error">{ghostDownloadError}</div>}
           </PlatformRow>
 
-          <PlatformRow frame="03" name="Letterboxd" status="manual">
+          <PlatformRow frame="02" name="Letterboxd" status="manual">
             <p className="frame__preview">{letterboxdReviewText(input)}</p>
             <p className="frame__helper">
               Watched {watchedDate ? formatDisplayDate(watchedDate) : "(no date set above)"} &middot; Rating{" "}
@@ -551,7 +510,7 @@ export default function App() {
           </PlatformRow>
 
           <PlatformRow
-            frame="04"
+            frame="03"
             name="Bluesky"
             status={blueskyStatus.state === "posted" ? "posted" : "auto"}
           >
@@ -585,7 +544,7 @@ export default function App() {
             {blueskyStatus.state === "error" && <div className="error">{blueskyStatus.message}</div>}
           </PlatformRow>
 
-          <PlatformRow frame="05" name="IMDb" status="manual">
+          <PlatformRow frame="04" name="IMDb" status="manual">
             <p className="frame__helper">
               Rating to select: {imdbRatingOutOf10(rating)}/10 &middot; Review title: {IMDB_REVIEW_TITLE}
             </p>
@@ -620,7 +579,7 @@ export default function App() {
             </div>
           </PlatformRow>
 
-          <PlatformRow frame="06" name="Rotten Tomatoes" status="manual">
+          <PlatformRow frame="05" name="Rotten Tomatoes" status="manual">
             <p className="frame__preview">{rottenTomatoesReviewText(input)}</p>
             <p className="frame__helper">Rating to select: {rating.toFixed(1)} ({ratingStars(rating)})</p>
             <div className="frame__actions">
@@ -643,7 +602,7 @@ export default function App() {
             </div>
           </PlatformRow>
 
-          <PlatformRow frame="07" name="Metacritic" status="manual">
+          <PlatformRow frame="06" name="Metacritic" status="manual">
             <p className="frame__preview">{metacriticReviewText(input)}</p>
             <p className="frame__helper">My Score: {imdbRatingOutOf10(rating)}/10</p>
             <div className="frame__actions">
@@ -666,7 +625,7 @@ export default function App() {
           </PlatformRow>
 
           <PlatformRow
-            frame="08"
+            frame="07"
             name="TMDB"
             status={tmdbRatingStatus.state === "submitted" ? "posted" : "manual"}
           >
@@ -726,7 +685,7 @@ export default function App() {
             {tmdbRatingStatus.state === "error" && <div className="error">{tmdbRatingStatus.message}</div>}
           </PlatformRow>
 
-          <PlatformRow frame="09" name="Plex" status="manual">
+          <PlatformRow frame="08" name="Plex" status="manual">
             <p className="frame__preview">{plexReviewText(input)}</p>
             <p className="frame__helper">
               Rating to select: {rating.toFixed(1)} ({ratingStars(rating)}) &middot; Plex has no API for this
@@ -746,24 +705,6 @@ export default function App() {
               </label>
             </div>
           </PlatformRow>
-
-          <section className="notion-update">
-            <h3>Update the Notion record</h3>
-            <p className="notion-update__hint">
-              In Notion's table view, click into the Status cell and paste the first value, then the
-              Platforms cell and paste the second, comma-separated values create/select tags automatically.
-            </p>
-            <div className="notion-update__row">
-              <span className="notion-update__label mono">Status</span>
-              <span className="notion-update__value mono">{notionStatusPaste}</span>
-              <CopyButton text={notionStatusPaste} label="Copy" />
-            </div>
-            <div className="notion-update__row">
-              <span className="notion-update__label mono">Platforms</span>
-              <span className="notion-update__value mono">{notionPlatformsPaste || "(none marked posted yet)"}</span>
-              <CopyButton text={notionPlatformsPaste} label="Copy" />
-            </div>
-          </section>
         </>
       )}
 

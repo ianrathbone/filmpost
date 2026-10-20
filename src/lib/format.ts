@@ -8,10 +8,13 @@ export interface ReviewInput {
   watchedDate: string; // YYYY-MM-DD, may be empty
 }
 
+/**
+ * Whole ratings drop the fraction (#rating-4), half ratings keep it
+ * (#rating-3-5), matching the tags already on the blog.
+ */
 export function ratingTag(rating: number): string {
   const whole = Math.floor(rating);
-  const frac = rating - whole === 0.5 ? "5" : "0";
-  return `#rating-${whole}-${frac}`;
+  return rating - whole === 0.5 ? `#rating-${whole}-5` : `#rating-${whole}`;
 }
 
 export function ratingStars(rating: number): string {
@@ -52,9 +55,16 @@ export function ghostTitle(input: ReviewInput): string {
   return input.year ? `${input.title} (${input.year})` : input.title;
 }
 
-export function ghostTags(input: ReviewInput): string {
-  return [ratingTag(input.rating), "filmreviewhaiku", "film", "review", "haiku"].join(", ");
+/**
+ * Ghost's tag field only turns typed or pasted text into a tag chip one tag
+ * at a time (a comma-separated paste lands as a single broken tag), so these
+ * are copied individually. Order matters: the first tag is Ghost's primary.
+ */
+export function ghostTagList(input: ReviewInput): string[] {
+  return ["filmreviewhaiku", ratingTag(input.rating)];
 }
+
+export const GHOST_EDITOR_URL = "https://rathbone.dev/ghost/#/editor/post";
 
 /**
  * The ISO timestamp to use as the Bluesky post's createdAt. If a watched
@@ -75,18 +85,6 @@ export function formatDisplayDate(watchedDate: string): string {
   const d = new Date(`${watchedDate}T00:00:00Z`);
   if (isNaN(d.getTime())) return watchedDate;
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-}
-
-export function notionSummary(input: ReviewInput): string {
-  const lines = [
-    `Film Title: ${input.title}`,
-    `Year: ${input.year || "(unknown)"}`,
-    `Rating: ${input.rating.toFixed(1)}`,
-    `Haiku: ${haikuBlock(input.haikuLines)}`,
-    `Extended Notes: ${input.notes || "(none)"}`,
-    `Poster URL: ${input.posterUrl || "(none)"}`,
-  ];
-  return lines.join("\n");
 }
 
 export interface ImportResult {
