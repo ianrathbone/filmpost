@@ -100,8 +100,8 @@ export interface ImportResult {
 }
 
 /**
- * Parses the block produced by the film-haiku-publish skill or Notion's
- * "Filmpost Import" formula column:
+ * Parses the block from Notion's "Filmpost Import" formula column (the same
+ * content the "Open in Filmpost" link carries):
  *
  * Film Title: <title>
  * Year: <year>
